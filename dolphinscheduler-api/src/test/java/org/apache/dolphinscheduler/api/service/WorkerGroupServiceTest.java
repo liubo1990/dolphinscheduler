@@ -34,18 +34,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 @ActiveProfiles(value = {ProfileType.H2})
-@RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = ApiApplicationServer.class)
 public class WorkerGroupServiceTest {
 
@@ -63,11 +61,19 @@ public class WorkerGroupServiceTest {
 
     private String groupName = "groupName000001";
 
+    private User loginUSer;
+
+    @BeforeEach
+    public void init() {
+        loginUSer = new User();
+        loginUSer.setUserType(UserType.ADMIN_USER);
+    }
+
     @Test
     public void testQueryAllGroup() {
-        Map<String, Object> result = workerGroupService.queryAllGroup();
+        Map<String, Object> result = workerGroupService.queryAllGroup(loginUSer);
         List<String> workerGroups = (List<String>) result.get(Constants.DATA_LIST);
-        Assert.assertEquals(workerGroups.size(), 1);
+        Assertions.assertEquals(workerGroups.size(), 1);
     }
 
     /**
@@ -76,20 +82,23 @@ public class WorkerGroupServiceTest {
     @Test
     public void testDeleteWorkerGroupById() {
         User user = new User();
+        user.setId(1);
         user.setUserType(UserType.ADMIN_USER);
         WorkerGroup wg2 = getWorkerGroup(2);
         Mockito.when(workerGroupMapper.selectById(2)).thenReturn(wg2);
-        Mockito.when(processInstanceMapper.queryByWorkerGroupNameAndStatus(wg2.getName(), Constants.NOT_TERMINATED_STATES)).thenReturn(getProcessInstanceList());
+        Mockito.when(processInstanceMapper.queryByWorkerGroupNameAndStatus(wg2.getName(), org.apache.dolphinscheduler.service.utils.Constants.NOT_TERMINATED_STATES)).thenReturn(getProcessInstanceList());
         Map<String, Object> result = workerGroupService.deleteWorkerGroupById(user, 1);
-        Assert.assertEquals(Status.DELETE_WORKER_GROUP_NOT_EXIST.getCode(), ((Status) result.get(Constants.STATUS)).getCode());
+        Assertions.assertEquals(Status.DELETE_WORKER_GROUP_NOT_EXIST.getCode(),
+                ((Status) result.get(Constants.STATUS)).getCode());
         result = workerGroupService.deleteWorkerGroupById(user, 2);
-        Assert.assertEquals(Status.DELETE_WORKER_GROUP_BY_ID_FAIL.getCode(), ((Status) result.get(Constants.STATUS)).getCode());
+        Assertions.assertEquals(Status.DELETE_WORKER_GROUP_BY_ID_FAIL.getCode(),
+                ((Status) result.get(Constants.STATUS)).getCode());
         // correct
         WorkerGroup wg3 = getWorkerGroup(3);
         Mockito.when(workerGroupMapper.selectById(3)).thenReturn(wg3);
-        Mockito.when(processInstanceMapper.queryByWorkerGroupNameAndStatus(wg3.getName(), Constants.NOT_TERMINATED_STATES)).thenReturn(new ArrayList<>());
+        Mockito.when(processInstanceMapper.queryByWorkerGroupNameAndStatus(wg3.getName(), org.apache.dolphinscheduler.service.utils.Constants.NOT_TERMINATED_STATES)).thenReturn(new ArrayList<>());
         result = workerGroupService.deleteWorkerGroupById(user, 3);
-        Assert.assertEquals(Status.SUCCESS.getMsg(), result.get(Constants.MSG));
+        Assertions.assertEquals(Status.SUCCESS.getMsg(), result.get(Constants.MSG));
     }
 
     /**
@@ -103,10 +112,10 @@ public class WorkerGroupServiceTest {
 
     @Test
     public void testQueryAllGroupWithDefault() {
-        Map<String, Object> result = workerGroupService.queryAllGroup();
+        Map<String, Object> result = workerGroupService.queryAllGroup(loginUSer);
         List<String> workerGroups = (List<String>) result.get(Constants.DATA_LIST);
-        Assert.assertEquals(1, workerGroups.size());
-        Assert.assertEquals("default", workerGroups.toArray()[0]);
+        Assertions.assertEquals(1, workerGroups.size());
+        Assertions.assertEquals("default", workerGroups.toArray()[0]);
     }
 
     /**

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { find, omit, cloneDeep } from 'lodash'
+import { omit, cloneDeep } from 'lodash'
 import type {
   INodeData,
   ITaskData,
@@ -35,10 +35,20 @@ export function formatParams(data: INodeData): {
   if (data.taskType === 'SUB_PROCESS') {
     taskParams.processDefinitionCode = data.processDefinitionCode
   }
+
+  if (data.taskType === 'JAVA') {
+    taskParams.runType = data.runType
+    taskParams.mainArgs = data.mainArgs
+    taskParams.jvmArgs = data.jvmArgs
+    taskParams.isModulePath = data.isModulePath
+    if (data.runType === 'JAR' && data.mainJar) {
+      taskParams.mainJar = { id: data.mainJar }
+    }
+  }
+
   if (
-    data.taskType === 'SPARK' ||
-    data.taskType === 'MR' ||
-    data.taskType === 'FLINK'
+    data.taskType &&
+    ['SPARK', 'MR', 'FLINK', 'FLINK_STREAM'].includes(data.taskType)
   ) {
     taskParams.programType = data.programType
     taskParams.mainClass = data.mainClass
@@ -52,7 +62,6 @@ export function formatParams(data: INodeData): {
   }
 
   if (data.taskType === 'SPARK') {
-    taskParams.sparkVersion = data.sparkVersion
     taskParams.driverCores = data.driverCores
     taskParams.driverMemory = data.driverMemory
     taskParams.numExecutors = data.numExecutors
@@ -60,7 +69,7 @@ export function formatParams(data: INodeData): {
     taskParams.executorCores = data.executorCores
   }
 
-  if (data.taskType === 'FLINK') {
+  if (data.taskType === 'FLINK' || data.taskType === 'FLINK_STREAM') {
     taskParams.flinkVersion = data.flinkVersion
     taskParams.jobManagerMemory = data.jobManagerMemory
     taskParams.taskManagerMemory = data.taskManagerMemory
@@ -88,6 +97,7 @@ export function formatParams(data: INodeData): {
       taskParams.hadoopCustomParams = data.hadoopCustomParams
       taskParams.sqoopAdvancedParams = data.sqoopAdvancedParams
       taskParams.concurrency = data.concurrency
+      taskParams.splitBy = data.splitBy
       taskParams.modelType = data.modelType
       taskParams.sourceType = data.sourceType
       taskParams.targetType = data.targetType
@@ -179,7 +189,6 @@ export function formatParams(data: INodeData): {
     taskParams.sqlType = data.sqlType
     taskParams.preStatements = data.preStatements
     taskParams.postStatements = data.postStatements
-    taskParams.segmentSeparator = data.segmentSeparator
     taskParams.sendEmail = data.sendEmail
     taskParams.displayRows = data.displayRows
     if (data.sqlType === '0' && data.sendEmail) {
@@ -199,12 +208,22 @@ export function formatParams(data: INodeData): {
   }
 
   if (data.taskType === 'SEATUNNEL') {
-    if (data.deployMode === 'local') {
-      data.master = 'local'
-      data.masterUrl = ''
-      data.deployMode = 'client'
+    taskParams.engine = data.engine
+    taskParams.useCustom = data.useCustom
+    taskParams.rawScript = data.rawScript
+    switch (data.engine) {
+      case 'FLINK':
+        taskParams.runMode = data.runMode
+        taskParams.others = data.others
+        break
+      case 'SPARK':
+        taskParams.deployMode = data.deployMode
+        taskParams.master = data.master
+        taskParams.masterUrl = data.masterUrl
+        break
+      default:
+        break
     }
-    buildRawScript(data)
   }
 
   if (data.taskType === 'SWITCH') {
@@ -310,12 +329,16 @@ export function formatParams(data: INodeData): {
 
   if (data.taskType === 'EMR') {
     taskParams.type = data.type
+    taskParams.programType = data.programType
     taskParams.jobFlowDefineJson = data.jobFlowDefineJson
+    taskParams.stepsDefineJson = data.stepsDefineJson
   }
 
   if (data.taskType === 'ZEPPELIN') {
-    taskParams.noteId = data.zeppelinNoteId
-    taskParams.paragraphId = data.zeppelinParagraphId
+    taskParams.noteId = data.noteId
+    taskParams.paragraphId = data.paragraphId
+    taskParams.restEndpoint = data.restEndpoint
+    taskParams.productionNoteDirectory = data.productionNoteDirectory
     taskParams.parameters = data.parameters
   }
 
@@ -355,8 +378,36 @@ export function formatParams(data: INodeData): {
     taskParams.deployModelKey = data.deployModelKey
     taskParams.mlflowProjectRepository = data.mlflowProjectRepository
     taskParams.mlflowProjectVersion = data.mlflowProjectVersion
-    taskParams.cpuLimit = data.cpuLimit
-    taskParams.memoryLimit = data.memoryLimit
+  }
+
+  if (data.taskType === 'DVC') {
+    taskParams.dvcTaskType = data.dvcTaskType
+    taskParams.dvcRepository = data.dvcRepository
+    taskParams.dvcVersion = data.dvcVersion
+    taskParams.dvcDataLocation = data.dvcDataLocation
+    taskParams.dvcMessage = data.dvcMessage
+    taskParams.dvcLoadSaveDataPath = data.dvcLoadSaveDataPath
+    taskParams.dvcStoreUrl = data.dvcStoreUrl
+  }
+
+  if (data.taskType === 'SAGEMAKER') {
+    taskParams.sagemakerRequestJson = data.sagemakerRequestJson
+  }
+  if (data.taskType === 'PYTORCH') {
+    taskParams.script = data.script
+    taskParams.scriptParams = data.scriptParams
+    taskParams.pythonPath = data.pythonPath
+    taskParams.isCreateEnvironment = data.isCreateEnvironment
+    taskParams.pythonCommand = data.pythonCommand
+    taskParams.pythonEnvTool = data.pythonEnvTool
+    taskParams.requirements = data.requirements
+    taskParams.condaPythonVersion = data.condaPythonVersion
+  }
+
+  if (data.taskType === 'DINKY') {
+    taskParams.address = data.address
+    taskParams.taskId = data.taskId
+    taskParams.online = data.online
   }
 
   if (data.taskType === 'OPENMLDB') {
@@ -366,9 +417,44 @@ export function formatParams(data: INodeData): {
     taskParams.sql = data.sql
   }
 
+  if (data.taskType === 'CHUNJUN') {
+    taskParams.customConfig = data.customConfig ? 1 : 0
+    taskParams.json = data.json
+    taskParams.deployMode = data.deployMode
+    taskParams.others = data.others
+  }
+
   if (data.taskType === 'PIGEON') {
     taskParams.targetJobName = data.targetJobName
   }
+
+  if (data.taskType === 'HIVECLI') {
+    taskParams.hiveCliTaskExecutionType = data.hiveCliTaskExecutionType
+    taskParams.hiveSqlScript = data.hiveSqlScript
+    taskParams.hiveCliOptions = data.hiveCliOptions
+  }
+  if (data.taskType === 'DMS') {
+    taskParams.isRestartTask = data.isRestartTask
+    taskParams.isJsonFormat = data.isJsonFormat
+    taskParams.jsonData = data.jsonData
+    taskParams.migrationType = data.migrationType
+    taskParams.replicationTaskIdentifier = data.replicationTaskIdentifier
+    taskParams.sourceEndpointArn = data.sourceEndpointArn
+    taskParams.targetEndpointArn = data.targetEndpointArn
+    taskParams.replicationInstanceArn = data.replicationInstanceArn
+    taskParams.tableMappings = data.tableMappings
+    taskParams.replicationTaskArn = data.replicationTaskArn
+  }
+
+  if (data.taskType === 'DATASYNC') {
+    taskParams.jsonFormat = data.jsonFormat
+    taskParams.json = data.json
+    taskParams.destinationLocationArn = data.destinationLocationArn
+    taskParams.sourceLocationArn = data.sourceLocationArn
+    taskParams.name = data.name
+    taskParams.cloudWatchLogGroupArn = data.cloudWatchLogGroupArn
+  }
+
   let timeoutNotifyStrategy = ''
   if (data.timeoutNotifyStrategy) {
     if (data.timeoutNotifyStrategy.length === 1) {
@@ -413,7 +499,8 @@ export function formatParams(data: INodeData): {
       timeoutNotifyStrategy: data.timeoutFlag ? timeoutNotifyStrategy : '',
       workerGroup: data.workerGroup,
       cpuQuota: data.cpuQuota || -1,
-      memoryMax: data.memoryMax || -1
+      memoryMax: data.memoryMax || -1,
+      taskExecuteType: data.taskExecuteType
     }
   } as {
     processDefinitionCode: string
@@ -605,51 +692,6 @@ export function formatModel(data: ITaskData) {
   if (data.taskParams?.jobType) {
     params.isCustomTask = data.taskParams.jobType === 'CUSTOM'
   }
+
   return params
-}
-
-const buildRawScript = (model: INodeData) => {
-  const baseScript = 'sh ${WATERDROP_HOME}/bin/start-waterdrop.sh'
-  if (!model.resourceList) return
-
-  let master = model.master
-  let masterUrl = model?.masterUrl ? model?.masterUrl : ''
-  let deployMode = model.deployMode
-  const queue = model.queue
-
-  if (model.deployMode === 'local') {
-    master = 'local'
-    masterUrl = ''
-    deployMode = 'client'
-  }
-
-  if (master === 'yarn' || master === 'local') {
-    masterUrl = ''
-  }
-
-  let localParams = ''
-  model?.localParams?.forEach((param: any) => {
-    localParams = localParams + ' --variable ' + param.prop + '=' + param.value
-  })
-
-  let rawScript = ''
-  model.resourceList?.forEach((id: number) => {
-    const item = find(model.resourceFiles, { id: id })
-
-    rawScript =
-      rawScript +
-      baseScript +
-      ' --master ' +
-      master +
-      masterUrl +
-      ' --deploy-mode ' +
-      deployMode +
-      ' --queue ' +
-      queue
-    if (item && item.fullName) {
-      rawScript = rawScript + ' --config ' + item.fullName
-    }
-    rawScript = rawScript + localParams + ' \n'
-  })
-  model.rawScript = rawScript ? rawScript : ''
 }

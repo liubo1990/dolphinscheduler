@@ -17,15 +17,13 @@
 
 package org.apache.dolphinscheduler.common.utils;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import static com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT;
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static com.fasterxml.jackson.databind.DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL;
 import static com.fasterxml.jackson.databind.MapperFeature.REQUIRE_SETTERS_FOR_GETTERS;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import org.apache.dolphinscheduler.common.Constants;
-import org.apache.dolphinscheduler.spi.utils.StringUtils;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -35,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
+
+import javax.annotation.Nullable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +55,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.databind.type.CollectionType;
+import com.google.common.base.Strings;
 
 /**
  * json utils
@@ -64,7 +65,7 @@ public class JSONUtils {
     private static final Logger logger = LoggerFactory.getLogger(JSONUtils.class);
 
     static {
-        logger.info("init timezone: {}",TimeZone.getDefault());
+        logger.info("init timezone: {}", TimeZone.getDefault());
     }
 
     /**
@@ -130,15 +131,15 @@ public class JSONUtils {
      * @return an object of type T from the string
      * classOfT
      */
-    public static <T> T parseObject(String json, Class<T> clazz) {
-        if (StringUtils.isEmpty(json)) {
+    public static @Nullable <T> T parseObject(String json, Class<T> clazz) {
+        if (Strings.isNullOrEmpty(json)) {
             return null;
         }
 
         try {
             return objectMapper.readValue(json, clazz);
         } catch (Exception e) {
-            logger.error("parse object exception!", e);
+            logger.error("Parse object exception, jsonStr: {}, class: {}", json, clazz, e);
         }
         return null;
     }
@@ -168,7 +169,7 @@ public class JSONUtils {
      * @return list
      */
     public static <T> List<T> toList(String json, Class<T> clazz) {
-        if (StringUtils.isEmpty(json)) {
+        if (Strings.isNullOrEmpty(json)) {
             return Collections.emptyList();
         }
 
@@ -190,7 +191,7 @@ public class JSONUtils {
      */
     public static boolean checkJsonValid(String json) {
 
-        if (StringUtils.isEmpty(json)) {
+        if (Strings.isNullOrEmpty(json)) {
             return false;
         }
 
@@ -231,7 +232,8 @@ public class JSONUtils {
      * @return json to map
      */
     public static Map<String, String> toMap(String json) {
-        return parseObject(json, new TypeReference<Map<String, String>>() {});
+        return parseObject(json, new TypeReference<Map<String, String>>() {
+        });
     }
 
     /**
@@ -245,7 +247,7 @@ public class JSONUtils {
      * @return to map
      */
     public static <K, V> Map<K, V> toMap(String json, Class<K> classK, Class<V> classV) {
-        if (StringUtils.isEmpty(json)) {
+        if (Strings.isNullOrEmpty(json)) {
             return Collections.emptyMap();
         }
 
@@ -287,7 +289,7 @@ public class JSONUtils {
      * @return return parse object
      */
     public static <T> T parseObject(String json, TypeReference<T> type) {
-        if (StringUtils.isEmpty(json)) {
+        if (Strings.isNullOrEmpty(json)) {
             return null;
         }
 
@@ -321,7 +323,7 @@ public class JSONUtils {
      * @param <T> object type
      * @return byte array
      */
-    public static <T> byte[] toJsonByteArray(T obj)  {
+    public static <T> byte[] toJsonByteArray(T obj) {
         if (obj == null) {
             return null;
         }

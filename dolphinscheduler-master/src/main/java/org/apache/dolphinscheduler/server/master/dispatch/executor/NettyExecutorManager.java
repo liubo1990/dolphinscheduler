@@ -62,13 +62,7 @@ public class NettyExecutorManager extends AbstractExecutorManager<Boolean> {
     private ServerNodeManager serverNodeManager;
 
     @Autowired
-    private TaskExecuteRunningProcessor taskExecuteRunningProcessor;
-
-    @Autowired
     private TaskKillResponseProcessor taskKillResponseProcessor;
-
-    @Autowired
-    private TaskExecuteResponseProcessor taskExecuteResponseProcessor;
 
     @Autowired
     private TaskRecallProcessor taskRecallProcessor;
@@ -88,10 +82,8 @@ public class NettyExecutorManager extends AbstractExecutorManager<Boolean> {
 
     @PostConstruct
     public void init() {
-        this.nettyRemotingClient.registerProcessor(CommandType.TASK_EXECUTE_RESPONSE, taskExecuteResponseProcessor);
-        this.nettyRemotingClient.registerProcessor(CommandType.TASK_EXECUTE_RUNNING, taskExecuteRunningProcessor);
         this.nettyRemotingClient.registerProcessor(CommandType.TASK_KILL_RESPONSE, taskKillResponseProcessor);
-        this.nettyRemotingClient.registerProcessor(CommandType.TASK_RECALL, taskRecallProcessor);
+        this.nettyRemotingClient.registerProcessor(CommandType.TASK_REJECT, taskRecallProcessor);
     }
 
     /**
@@ -117,8 +109,12 @@ public class NettyExecutorManager extends AbstractExecutorManager<Boolean> {
                 doExecute(host, command);
                 success = true;
                 context.setHost(host);
+                // We set the host to taskInstance to avoid when the worker down, this taskInstance may not be
+                // failovered, due to the taskInstance's host
+                // is not belongs to the down worker ISSUE-10842.
+                context.getTaskInstance().setHost(host.getAddress());
             } catch (ExecuteException ex) {
-                logger.error(String.format("execute command : %s error", command), ex);
+                logger.error("Execute command {} error", command, ex);
                 try {
                     failNodeSet.add(host.getAddress());
                     Set<String> tmpAllIps = new HashSet<>(allNodes);
@@ -160,7 +156,7 @@ public class NettyExecutorManager extends AbstractExecutorManager<Boolean> {
                 nettyRemotingClient.send(host, command);
                 success = true;
             } catch (Exception ex) {
-                logger.error(String.format("send command : %s to %s error", command, host), ex);
+                logger.error("Send command to {} error, command: {}", host, command, ex);
                 retryCount--;
                 ThreadUtils.sleep(Constants.SLEEP_TIME_MILLIS);
             }
@@ -196,7 +192,4 @@ public class NettyExecutorManager extends AbstractExecutorManager<Boolean> {
         return nodes;
     }
 
-    public NettyRemotingClient getNettyRemotingClient() {
-        return nettyRemotingClient;
-    }
 }

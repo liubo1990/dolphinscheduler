@@ -17,7 +17,6 @@
 
 package org.apache.dolphinscheduler.scheduler.quartz;
 
-
 import static org.quartz.CronScheduleBuilder.cronSchedule;
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -112,7 +111,7 @@ public class QuartzScheduler implements SchedulerApi {
                     .endAt(endDate)
                     .withSchedule(
                             cronSchedule(cronExpression)
-                                    .withMisfireHandlingInstructionDoNothing()
+                                    .withMisfireHandlingInstructionFireAndProceed()
                                     .inTimeZone(DateUtils.getTimezone(timezoneId))
                     )
                     .forJob(jobDetail).build();
